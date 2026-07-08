@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Http Caddy Login</title>
+    <style>
+        body {
+            background-color: #f4f4f9;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+            padding: 30px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn.secondary {
+            background-color: #6c757d;
+        }
+
+        .btn.secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .btn.warning {
+            background-color: #f0ad4e;
+        }
+
+        .btn.warning:hover {
+            background-color: #ec971f;
+        }
+
+        .btn.success {
+            background-color: #5cb85c;
+        }
+
+        .btn.success:hover {
+            background-color: #449d44;
+        }
+
+        .error {
+            color: #d9534f;
+            margin-top: 15px;
+            background-color: #fdf7f7;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ebccd1;
+        }
+
+        .encrypted-result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            color: #2e7d32;
+            border-radius: 6px;
+            text-align: left;
+            overflow-x: auto;
+        }
+
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container" id="app">
+        <h1>Aegis Http Caddy Login</h1>
+
+        <!-- Unauthenticated View -->
+        <div id="unauthenticatedView">
+            <p>
+                This system uses a Native Messaging Browser Extension to securely ask
+                your local GPG to sign a challenge through Caddy.
+            </p>
+            <button id="loginBtn">Login with GPG</button>
+            <div id="errorMsg" class="error" style="display: none;"></div>
+        </div>
+
+        <!-- Authenticated View -->
+        <div id="authenticatedView" style="display: none;">
+            <h2 style="color: #4caf50">Welcome, <span id="userEmail"></span>!</h2>
+            <p>Your GPG signature was successfully verified by the Caddy backend.</p>
+
+            <div style="margin-top: 20px;">
+                <button id="testAuthBtn" class="btn secondary">Test Protected Route</button>
+                <button id="testEncryptedBtn" class="btn warning">Test Encrypted E2E Request</button>
+                <button id="testBidirectionalBtn" class="btn success" style="margin-top: 10px;">Test Bidirectional
+                    Encryption (POST)</button>
+            </div>
+
+            <div id="resultContainer" class="encrypted-result" style="display: none;">
+                <p><strong>Decrypted Backend Response:</strong></p>
+                <pre id="protectedData"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Aegis SDK -->
+    <script type="module" src="aegis.js"></script>
+    <script type="module">
+        let email = "";
+        let sessionToken = "";
+
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        const unauthenticatedView = document.getElementById('unauthenticatedView');
+        const authenticatedView = document.getElementById('authenticatedView');
+        const userEmailSpan = document.getElementById('userEmail');
+
+        const testAuthBtn = document.getElementById('testAuthBtn');
+        const testEncryptedBtn = document.getElementById('testEncryptedBtn');
+        const testBidirectionalBtn = document.getElementById('testBidirectionalBtn');
+        const resultContainer = document.getElementById('resultContainer');
+        const protectedData = document.getElementById('protectedData');
+
+        const API_BASE = "http://localhost:3003";
+
+        function showError(msg) {
+            errorMsg.style.display = 'block';
+            errorMsg.innerText = msg;
+            console.error(msg);
+        }
+
+        function showResult(dataText) {
+            resultContainer.style.display = 'block';
+            protectedData.innerText = dataText;
+        }
+
+        // 1. Initialize the SDK. We force E2E Tunneling!
+        if (window.aegis) {
+            window.aegis.init({
+                challengeUrl: API_BASE + "/api/challenge",
+                loginUrl: API_BASE + "/api/login",
+                forceTunneling: true
+            });
+        }
+
+        loginBtn.addEventListener('click', async () => {
+            loginBtn.disabled = true;
+            loginBtn.innerText = "Authenticating...";
+            errorMsg.style.display = 'none';
+
+            try {
+                // Delegate login to the native SDK
+                email = await window.aegis.login();
+
+                // Switch ui
+                unauthenticatedView.style.display = 'none';
+                authenticatedView.style.display = 'block';
+                userEmailSpan.innerText = email;
+
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerText = "Login with GPG";
+            }
+        });
+
+        testAuthBtn.addEventListener('click', async () => {
+            showResult("Fetching protected data (Tunneled natively!)...");
+            try {
+                const res = await fetch(API_BASE + "/api/test", {
+                    headers: {
+                        "Authorization": "Bearer sample-jwt-token-hiding-inside-tunnel",
+                        "X-Custom-Client-Header": "Hello-Backend"
+                    }
+                });
+                const text = await res.text();
+                try {
+                    const parsed = JSON.parse(text);
+                    showResult(JSON.stringify(parsed, null, 2));
+                } catch (e) {
+                    showResult(text);
+                }
+            } catch (err) {
+                showResult("Error: " + err.message);
+            }
+        });
+
+        testEncryptedBtn.addEventListener('click', async () => {
+            showResult("Fetching encrypted data (Tunneled natively!)...");
+            try {
+                const res = await fetch(API_BASE + "/api/test");
+
+                // The extension interceptor Decrypts this transparently!
+                const text = await res.text();
+                showResult(text);
+            } catch (err) {
+                showResult("Error: " + err.message);
+            }
+        });
+
+        testBidirectionalBtn.addEventListener('click', async () => {
+            showResult("Sending standard POST request... Extension autonomously tunnels & encrypts it!");
+            try {
+                const res = await fetch(API_BASE + "/api/test", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        secret_message: "This is a top secret payload from the client, encrypted natively via Caddy!"
+                    })
+                });
+
+                const text = await res.text();
+                try {
+                    const parsed = JSON.parse(text);
+                    showResult(JSON.stringify(parsed, null, 2));
+                } catch (e) {
+                    showResult(text);
+                }
+            } catch (err) {
+                showResult("Error: " + err.message);
+            }
+        });
+    </script>
+</body>
+
+</html>

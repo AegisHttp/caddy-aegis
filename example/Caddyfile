@@ -1,0 +1,25 @@
+{
+    order aegis_http before reverse_proxy
+}
+
+:8080 {
+    # Define route block
+    route {
+        # Enable Aegis Http Encryption/Decryption and Zero Trust Auth
+        aegis_http {
+            challenge_path /api/challenge
+            login_path /api/login
+            decrypt_requests
+            encrypt_responses
+            check_revocation
+            tunneling_enabled
+            server_email "api@yourdomain.com"
+            server_passphrase "secret"
+            server_private_key_path "server_private.asc"
+            server_public_key_path "server_public.asc"
+        }
+
+        # Your unsafe backend (e.g., PHP, GoFiber, Express) that Aegis protects
+        reverse_proxy localhost:3000
+    }
+}

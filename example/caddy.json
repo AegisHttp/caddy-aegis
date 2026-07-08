@@ -1,0 +1,71 @@
+{
+  "apps": {
+    "http": {
+      "servers": {
+        "aegis_server": {
+          "listen": [
+            ":3003"
+          ],
+          "routes": [
+            {
+              "handle": [
+                {
+                  "handler": "headers",
+                  "response": {
+                    "set": {
+                      "Access-Control-Allow-Origin": [
+                        "*"
+                      ],
+                      "Access-Control-Allow-Methods": [
+                        "GET",
+                        "POST",
+                        "OPTIONS"
+                      ],
+                      "Access-Control-Allow-Headers": [
+                        "Origin",
+                        "Content-Type",
+                        "Accept",
+                        "x-gpg-id",
+                        "x-gpg-session-token",
+                        "x-gpg-signature",
+                        "x-gpg-encrypted",
+                        "x-gpg-tunnel"
+                      ],
+                      "Access-Control-Expose-Headers": [
+                        "x-gpg-server-id",
+                        "x-gpg-support",
+                        "x-gpg-encrypted",
+                        "x-gpg-session-token"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "handler": "aegis_http",
+                  "challenge_path": "/api/challenge",
+                  "login_path": "/api/login",
+                  "decrypt_requests": true,
+                  "encrypt_responses": true,
+                  "check_revocation": true,
+                  "tunneling_enabled": true,
+                  "server_email": "server@aegishttpgpg.local",
+                  "server_passphrase": "ra@e4znet1",
+                  "server_private_key_path": "/mnt/disk1/projects/aegis-http/caddy-module/example/server_private.asc",
+                  "server_public_key_path": "/mnt/disk1/projects/aegis-http/caddy-module/example/server_public.asc"
+                },
+                {
+                  "handler": "reverse_proxy",
+                  "upstreams": [
+                    {
+                      "dial": "localhost:4000"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

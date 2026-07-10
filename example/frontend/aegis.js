@@ -39,41 +39,52 @@ class AegisHttpSDK {
             this.showInstallDialog();
             throw new Error("GPG Browser Extension is not installed or active.");
         }
-        // 2. Fetch challenge
-        const challengeRes = await fetch(this.config.challengeUrl);
-        if (!challengeRes.ok) {
-            throw new Error("Failed to get challenge from backend at " + this.config.challengeUrl);
-        }
-        if (challengeRes.headers.get("x-gpg-support") !== "true") {
-            throw new Error("Server does restricted GPG login (x-gpg-support header missing)");
-        }
-        const data = await challengeRes.json();
-        const challenge = data.challenge;
-        // 3. Request native extension to sign the challenge (passing optional email)
-        const loginResult = await window.gpgLogin(challenge, email);
-        // 4. Send the signed payload back to backend
-        const loginRes = await fetch(this.config.loginUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                email: loginResult.email,
-                challenge: challenge,
-                signature: loginResult.signature,
-                public_key: loginResult.public_key,
-            }),
-        });
-        const loginData = await loginRes.json();
-        if (!loginRes.ok) {
-            throw new Error(loginData.error || "Login failed on backend verification");
-        }
-        // Emit an empty GET to help the extension register server-id securely
         try {
-            await fetch(this.config.challengeUrl, { headers: { "x-gpg-id": loginData.email } });
+            // 2. Fetch challenge
+            const challengeRes = await fetch(this.config.challengeUrl);
+            if (!challengeRes.ok) {
+                throw new Error("Failed to get challenge from backend at " + this.config.challengeUrl);
+            }
+            if (challengeRes.headers.get("x-gpg-support") !== "true") {
+                throw new Error("Server does restricted GPG login (x-gpg-support header missing)");
+            }
+            const data = await challengeRes.json();
+            const challenge = data.challenge;
+            // 3. Request native extension to sign the challenge (passing optional email)
+            const loginResult = await window.gpgLogin(challenge, email);
+            // 4. Send the signed payload back to backend
+            const loginRes = await fetch(this.config.loginUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: loginResult.email,
+                    challenge: challenge,
+                    signature: loginResult.signature,
+                    public_key: loginResult.public_key,
+                }),
+            });
+            const loginData = await loginRes.json();
+            if (!loginRes.ok) {
+                throw new Error(loginData.error || "Login failed on backend verification");
+            }
+            // Emit an empty GET to help the extension register server-id securely
+            try {
+                await fetch(this.config.challengeUrl, { headers: { "x-gpg-id": loginData.email } });
+            }
+            catch (e) { }
+            return loginData.email;
         }
-        catch (e) { }
-        return loginData.email;
+        catch (err) {
+            const errMsg = err.message || "";
+            if (errMsg.includes("No such native application") ||
+                errMsg.includes("not found") ||
+                errMsg.includes("disconnected")) {
+                this.showInstallDialog();
+            }
+            throw err;
+        }
     }
     /**
      * Detects user's operating system to show targeted installation commands.

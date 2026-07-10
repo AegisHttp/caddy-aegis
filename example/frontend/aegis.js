@@ -75,65 +75,235 @@ class AegisHttpSDK {
         return loginData.email;
     }
     /**
-     * Displays a dialog prompting the user to install the browser extension.
+     * Detects user's operating system to show targeted installation commands.
+     */
+    getOSInfo() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        if (userAgent.indexOf("win") !== -1) {
+            return {
+                name: "Windows",
+                link: "https://github.com/AegisHttp/native-host-rust/releases/latest"
+            };
+        }
+        if (userAgent.indexOf("mac") !== -1) {
+            return {
+                name: "macOS",
+                cmd: "brew tap AegisHttp/tap && brew install aegis-host"
+            };
+        }
+        if (userAgent.indexOf("linux") !== -1) {
+            if (userAgent.indexOf("ubuntu") !== -1) {
+                return {
+                    name: "Ubuntu",
+                    cmd: "sudo snap install aegis-host"
+                };
+            }
+            if (userAgent.indexOf("debian") !== -1) {
+                return {
+                    name: "Debian",
+                    cmd: "sudo add-apt-repository ppa:aegis-http/ppa && sudo apt update && sudo apt install aegis-host"
+                };
+            }
+            return {
+                name: "Linux",
+                cmd: "sudo snap install aegis-host"
+            };
+        }
+        return {
+            name: "detected platform"
+        };
+    }
+    /**
+     * Displays a dialog prompting the user to install the browser extension and native host daemon.
      */
     showInstallDialog() {
+        const osInfo = this.getOSInfo();
         const overlay = document.createElement("div");
         overlay.style.position = "fixed";
         overlay.style.top = "0";
         overlay.style.left = "0";
         overlay.style.width = "100vw";
         overlay.style.height = "100vh";
-        overlay.style.backgroundColor = "rgba(0, 0, 0, 0.6)";
+        overlay.style.backgroundColor = "rgba(15, 23, 42, 0.75)";
+        overlay.style.backdropFilter = "blur(4px)";
         overlay.style.zIndex = "999999";
         overlay.style.display = "flex";
         overlay.style.alignItems = "center";
         overlay.style.justifyContent = "center";
-        overlay.style.fontFamily = "sans-serif";
+        overlay.style.fontFamily = "system-ui, -apple-system, sans-serif";
         const modal = document.createElement("div");
-        modal.style.backgroundColor = "white";
+        modal.style.backgroundColor = "#1e293b";
+        modal.style.color = "#f8fafc";
         modal.style.padding = "30px";
-        modal.style.borderRadius = "8px";
-        modal.style.maxWidth = "400px";
-        modal.style.textAlign = "center";
-        modal.style.boxShadow = "0 10px 25px rgba(0,0,0,0.2)";
-        const title = document.createElement("h2");
-        title.innerText = "Aegis Http Extension Required";
-        title.style.margin = "0 0 15px";
-        title.style.color = "#333";
-        const text = document.createElement("p");
-        text.innerText = "To authenticate using Zero Trust GPG, you must install the Aegis Http Browser Extension for Chrome or Firefox.";
-        text.style.color = "#666";
-        text.style.lineHeight = "1.5";
-        text.style.marginBottom = "20px";
-        const actionContainer = document.createElement("div");
-        actionContainer.style.display = "flex";
-        actionContainer.style.gap = "10px";
-        actionContainer.style.justifyContent = "center";
+        modal.style.borderRadius = "12px";
+        modal.style.maxWidth = "460px";
+        modal.style.width = "90%";
+        modal.style.boxShadow = "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)";
+        modal.style.border = "1px solid #334155";
+        const title = document.createElement("h3");
+        title.innerText = "🛡️ Aegis HTTP Gateway Required";
+        title.style.margin = "0 0 10px";
+        title.style.fontSize = "1.25rem";
+        title.style.fontWeight = "600";
+        const desc = document.createElement("p");
+        desc.innerText = "To authenticate using E2E GPG keys, you need to install both the browser extension and the local native daemon.";
+        desc.style.color = "#94a3b8";
+        desc.style.fontSize = "0.9rem";
+        desc.style.lineHeight = "1.5";
+        desc.style.margin = "0 0 20px";
+        // Step 1: Extension
+        const step1Title = document.createElement("div");
+        step1Title.innerHTML = "<strong>Step 1:</strong> Install Browser Extension";
+        step1Title.style.fontSize = "0.95rem";
+        step1Title.style.marginBottom = "8px";
+        const extLink = document.createElement("a");
+        extLink.href = "https://chromewebstore.google.com/detail/lappbcambkogfmigiphapgjcglafcfnd";
+        extLink.target = "_blank";
+        extLink.style.display = "inline-flex";
+        extLink.style.alignItems = "center";
+        extLink.style.gap = "8px";
+        extLink.style.padding = "10px 16px";
+        extLink.style.background = "#0284c7";
+        extLink.style.color = "white";
+        extLink.style.textDecoration = "none";
+        extLink.style.borderRadius = "6px";
+        extLink.style.fontSize = "0.85rem";
+        extLink.style.fontWeight = "500";
+        extLink.style.marginBottom = "20px";
+        extLink.innerText = "Add to Chrome";
+        // Step 2: Native Daemon
+        const step2Title = document.createElement("div");
+        step2Title.innerHTML = "<strong>Step 2:</strong> Install Local Native Daemon (aegis-host)";
+        step2Title.style.fontSize = "0.95rem";
+        step2Title.style.marginBottom = "10px";
+        // Dropdown to select OS
+        const osSelect = document.createElement("select");
+        osSelect.style.width = "100%";
+        osSelect.style.padding = "8px 12px";
+        osSelect.style.background = "#0f172a";
+        osSelect.style.color = "#f8fafc";
+        osSelect.style.border = "1px solid #334155";
+        osSelect.style.borderRadius = "6px";
+        osSelect.style.fontSize = "0.85rem";
+        osSelect.style.marginBottom = "12px";
+        osSelect.style.outline = "none";
+        const options = [
+            { text: "Ubuntu (Snap)", value: "ubuntu" },
+            { text: "Debian (PPA)", value: "debian" },
+            { text: "macOS (Homebrew)", value: "macos" },
+            { text: "Windows (Installer)", value: "windows" }
+        ];
+        options.forEach(opt => {
+            const el = document.createElement("option");
+            el.text = opt.text;
+            el.value = opt.value;
+            osSelect.add(el);
+        });
+        // Set default value based on detection
+        let defaultVal = "ubuntu";
+        if (osInfo.name === "Windows")
+            defaultVal = "windows";
+        else if (osInfo.name === "macOS")
+            defaultVal = "macos";
+        else if (osInfo.name === "Debian")
+            defaultVal = "debian";
+        osSelect.value = defaultVal;
+        // Command / Download container
+        const cmdContainer = document.createElement("div");
+        cmdContainer.style.background = "#0f172a";
+        cmdContainer.style.padding = "12px";
+        cmdContainer.style.borderRadius = "6px";
+        cmdContainer.style.border = "1px solid #334155";
+        cmdContainer.style.marginBottom = "25px";
+        cmdContainer.style.position = "relative";
+        const updateContent = (os) => {
+            cmdContainer.innerHTML = "";
+            if (os === "windows") {
+                const winDesc = document.createElement("div");
+                winDesc.innerText = "Download and run the Windows NSIS Setup installer:";
+                winDesc.style.fontSize = "0.8rem";
+                winDesc.style.color = "#94a3b8";
+                winDesc.style.marginBottom = "8px";
+                const winLink = document.createElement("a");
+                winLink.href = "https://github.com/AegisHttp/native-host-rust/releases/latest";
+                winLink.target = "_blank";
+                winLink.innerText = "📥 Download aegis-host-installer.exe";
+                winLink.style.display = "inline-block";
+                winLink.style.color = "#38bdf8";
+                winLink.style.fontSize = "0.85rem";
+                winLink.style.fontWeight = "500";
+                winLink.style.textDecoration = "none";
+                cmdContainer.appendChild(winDesc);
+                cmdContainer.appendChild(winLink);
+            }
+            else {
+                let command = "";
+                if (os === "ubuntu") {
+                    command = "sudo snap install aegis-host";
+                }
+                else if (os === "debian") {
+                    command = "sudo add-apt-repository ppa:aegis-http/ppa && sudo apt update && sudo apt install aegis-host";
+                }
+                else if (os === "macos") {
+                    command = "brew tap AegisHttp/tap && brew install aegis-host";
+                }
+                const code = document.createElement("code");
+                code.innerText = command;
+                code.style.fontFamily = "monospace";
+                code.style.fontSize = "0.8rem";
+                code.style.color = "#38bdf8";
+                code.style.wordBreak = "break-all";
+                code.style.display = "block";
+                code.style.paddingRight = "50px";
+                const copyBtn = document.createElement("button");
+                copyBtn.innerText = "Copy";
+                copyBtn.style.position = "absolute";
+                copyBtn.style.right = "8px";
+                copyBtn.style.top = "8px";
+                copyBtn.style.background = "#334155";
+                copyBtn.style.color = "white";
+                copyBtn.style.border = "none";
+                copyBtn.style.padding = "4px 8px";
+                copyBtn.style.borderRadius = "4px";
+                copyBtn.style.fontSize = "0.75rem";
+                copyBtn.style.cursor = "pointer";
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(command);
+                    copyBtn.innerText = "Copied!";
+                    setTimeout(() => copyBtn.innerText = "Copy", 2000);
+                };
+                cmdContainer.appendChild(code);
+                cmdContainer.appendChild(copyBtn);
+            }
+        };
+        osSelect.onchange = (e) => {
+            updateContent(e.target.value);
+        };
+        // Initialize content
+        updateContent(defaultVal);
+        // Actions
+        const footer = document.createElement("div");
+        footer.style.display = "flex";
+        footer.style.justifyContent = "flex-end";
         const closeBtn = document.createElement("button");
         closeBtn.innerText = "Close";
-        closeBtn.style.padding = "10px 20px";
-        closeBtn.style.border = "none";
-        closeBtn.style.borderRadius = "4px";
-        closeBtn.style.background = "#ddd";
+        closeBtn.style.padding = "8px 16px";
+        closeBtn.style.background = "transparent";
+        closeBtn.style.color = "#94a3b8";
+        closeBtn.style.border = "1px solid #334155";
+        closeBtn.style.borderRadius = "6px";
+        closeBtn.style.fontSize = "0.85rem";
         closeBtn.style.cursor = "pointer";
         closeBtn.onclick = () => document.body.removeChild(overlay);
-        const installBtn = document.createElement("a");
-        installBtn.innerText = "Install Extension";
-        installBtn.href = "https://github.com/AegisHttp/chrome-extension"; // Replace with your actual webstore URL later
-        installBtn.target = "_blank";
-        installBtn.style.padding = "10px 20px";
-        installBtn.style.border = "none";
-        installBtn.style.borderRadius = "4px";
-        installBtn.style.background = "#007bff";
-        installBtn.style.color = "white";
-        installBtn.style.textDecoration = "none";
-        installBtn.style.cursor = "pointer";
-        actionContainer.appendChild(closeBtn);
-        actionContainer.appendChild(installBtn);
+        footer.appendChild(closeBtn);
         modal.appendChild(title);
-        modal.appendChild(text);
-        modal.appendChild(actionContainer);
+        modal.appendChild(desc);
+        modal.appendChild(step1Title);
+        modal.appendChild(extLink);
+        modal.appendChild(step2Title);
+        modal.appendChild(osSelect);
+        modal.appendChild(cmdContainer);
+        modal.appendChild(footer);
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
     }

@@ -79,8 +79,12 @@ class AegisHttpSDK {
         catch (err) {
             const errMsg = err.message || "";
             if (errMsg.includes("No such native application") ||
+                errMsg.includes("no_native_host") ||
+                errMsg.includes("not_found") ||
                 errMsg.includes("not found") ||
-                errMsg.includes("disconnected")) {
+                errMsg.includes("disconnected") ||
+                errMsg.includes("disconnect") ||
+                errMsg.includes("general_error")) {
                 this.showInstallDialog(true);
             }
             throw err;

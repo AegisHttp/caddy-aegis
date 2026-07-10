@@ -81,7 +81,7 @@ class AegisHttpSDK {
             if (errMsg.includes("No such native application") ||
                 errMsg.includes("not found") ||
                 errMsg.includes("disconnected")) {
-                this.showInstallDialog();
+                this.showInstallDialog(true);
             }
             throw err;
         }
@@ -128,7 +128,7 @@ class AegisHttpSDK {
     /**
      * Displays a dialog prompting the user to install the browser extension and native host daemon.
      */
-    showInstallDialog() {
+    showInstallDialog(extensionInstalled = false) {
         const osInfo = this.getOSInfo();
         const overlay = document.createElement("div");
         overlay.style.position = "fixed";
@@ -158,7 +158,9 @@ class AegisHttpSDK {
         title.style.fontSize = "1.25rem";
         title.style.fontWeight = "600";
         const desc = document.createElement("p");
-        desc.innerText = "To authenticate using E2E GPG keys, you need to install both the browser extension and the local native daemon.";
+        desc.innerText = extensionInstalled
+            ? "To authenticate using E2E GPG keys, you need to install the local native daemon (aegis-host)."
+            : "To authenticate using E2E GPG keys, you need to install both the browser extension and the local native daemon.";
         desc.style.color = "#94a3b8";
         desc.style.fontSize = "0.9rem";
         desc.style.lineHeight = "1.5";
@@ -189,7 +191,9 @@ class AegisHttpSDK {
         extLink.innerText = isFirefox ? "Add to Firefox" : "Add to Chrome";
         // Step 2: Native Daemon
         const step2Title = document.createElement("div");
-        step2Title.innerHTML = "<strong>Step 2:</strong> Install Local Native Daemon (aegis-host)";
+        step2Title.innerHTML = extensionInstalled
+            ? "<strong>Install Local Native Daemon (aegis-host)</strong>"
+            : "<strong>Step 2:</strong> Install Local Native Daemon (aegis-host)";
         step2Title.style.fontSize = "0.95rem";
         step2Title.style.marginBottom = "10px";
         // Dropdown to select OS
@@ -314,8 +318,10 @@ class AegisHttpSDK {
         footer.appendChild(closeBtn);
         modal.appendChild(title);
         modal.appendChild(desc);
-        modal.appendChild(step1Title);
-        modal.appendChild(extLink);
+        if (!extensionInstalled) {
+            modal.appendChild(step1Title);
+            modal.appendChild(extLink);
+        }
         modal.appendChild(step2Title);
         modal.appendChild(osSelect);
         modal.appendChild(cmdContainer);

@@ -116,7 +116,10 @@
                 This system uses a Native Messaging Browser Extension to securely ask
                 your local GPG to sign a challenge through Caddy.
             </p>
-            <button id="loginBtn">Login with GPG</button>
+            <div id="loginActions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; align-items: center;">
+                <button id="loginBtn" style="margin-top: 0; flex: 1;">Login with GPG</button>
+                <button id="changeKeyBtn" class="btn secondary" style="margin-top: 0; flex: 0 0 auto; width: auto; display: none; padding: 12px 18px;">Change Key</button>
+            </div>
             <div id="errorMsg" class="error" style="display: none;"></div>
         </div>
 
@@ -146,6 +149,7 @@
         let sessionToken = "";
 
         const loginBtn = document.getElementById('loginBtn');
+        const changeKeyBtn = document.getElementById('changeKeyBtn');
         const errorMsg = document.getElementById('errorMsg');
         const unauthenticatedView = document.getElementById('unauthenticatedView');
         const authenticatedView = document.getElementById('authenticatedView');
@@ -165,6 +169,26 @@
             console.error(msg);
         }
 
+        // UI state management for saved GPG email
+        function updateLoginButtonUI() {
+            const savedEmail = localStorage.getItem('aegis_last_email');
+            if (savedEmail) {
+                loginBtn.innerText = `Login as ${savedEmail}`;
+                changeKeyBtn.style.display = 'block';
+            } else {
+                loginBtn.innerText = "Login with GPG";
+                changeKeyBtn.style.display = 'none';
+            }
+        }
+
+        // Initialize UI state
+        updateLoginButtonUI();
+
+        changeKeyBtn.addEventListener('click', () => {
+            localStorage.removeItem('aegis_last_email');
+            updateLoginButtonUI();
+        });
+
         function showResult(dataText) {
             resultContainer.style.display = 'block';
             protectedData.innerText = dataText;
@@ -181,12 +205,18 @@
 
         loginBtn.addEventListener('click', async () => {
             loginBtn.disabled = true;
+            changeKeyBtn.disabled = true;
+            const savedEmail = localStorage.getItem('aegis_last_email') || undefined;
             loginBtn.innerText = "Authenticating...";
             errorMsg.style.display = 'none';
 
             try {
-                // Delegate login to the native SDK
-                email = await window.aegis.login();
+                // Delegate login to the native SDK, passing preselected email if present
+                email = await window.aegis.login(savedEmail);
+
+                // Save email on successful login
+                localStorage.setItem('aegis_last_email', email);
+                updateLoginButtonUI();
 
                 // Switch ui
                 unauthenticatedView.style.display = 'none';
@@ -195,9 +225,13 @@
 
             } catch (err) {
                 showError(err.message);
+                if (savedEmail) {
+                    localStorage.removeItem('aegis_last_email');
+                    updateLoginButtonUI();
+                }
             } finally {
                 loginBtn.disabled = false;
-                loginBtn.innerText = "Login with GPG";
+                changeKeyBtn.disabled = false;
             }
         });
 
